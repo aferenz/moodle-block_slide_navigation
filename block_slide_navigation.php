@@ -38,14 +38,11 @@ class slide_navigation extends global_navigation {
      *
      * @return bool
      */
-
     public function initialise() {
-        global $CFG, $SITE, $USER, $DB;
-
 
         $coursenavview = get_config('slide_navigation', 'coursenavitems');
 
-
+        global $CFG, $SITE, $USER, $DB;
         // Check if it has alread been initialised
         if ($this->initialised || during_initial_install()) {
             return true;
@@ -79,40 +76,36 @@ class slide_navigation extends global_navigation {
         $this->rootnodes['courses']   = $this->add(get_string('courses'), null, self::TYPE_ROOTNODE, null, 'courses');
         $this->rootnodes['users']     = $this->add(get_string('users'), null, self::TYPE_ROOTNODE, null, 'users');
 
-
         // Fetch all of the users courses.
-       $limit = 20;
+        $limit = 20;
         if (!empty($CFG->navcourselimit)) {
             $limit = $CFG->navcourselimit;
         }
-         ($coursenavview =='courses')? $courselimit = $limit : $courselimit = 0;
+        ($coursenavview =='courses')? $courselimit = $limit : $courselimit = 0;
 
         $mycourses = enrol_get_my_courses(NULL, 'visible DESC,sortorder ASC',$courselimit);
         $showallcourses = (count($mycourses) == 0 || !empty($CFG->navshowallcourses));
-       // $showcategories = ($showallcourses && $this->show_categories());
-        $showcategories = true;
         $issite = ($this->page->course->id == SITEID);
         $ismycourse = (array_key_exists($this->page->course->id, $mycourses));
+        $showcategories = true;
 
         // Check if any courses were returned.
-
         if (count($mycourses) > 0) {
             // Add all of the users courses to the navigation
             foreach ($mycourses as $course) {
 
                 if ($coursenavview =='courses'){
-                 $course->coursenode = $this->add_course($course, false, true);
+                    $course->coursenode = $this->add_course($course, false, true);
                 }else{
-                $this->load_course($course);
+                    $this->load_course($course);
                 }
-
             }
         }
 
         if ($showallcourses) {
             // Load all courses
             $this->load_all_courses();
-       }
+        }
 
         // We always load the frontpage course to ensure it is available without
         // JavaScript enabled.
@@ -305,11 +298,10 @@ class slide_navigation extends global_navigation {
                 }
             }
         }
-        $limit = 20;
-
+        $limit =20;
         if ($showcategories && (is_siteadmin($USER->id))) {
             $categories = $this->find_all_of_type(self::TYPE_CATEGORY);
-             foreach ($categories as &$category) {
+            foreach ($categories as &$category) {
                 if ($category->children->count() >= $limit && (is_siteadmin($USER->id))) {
                     $url = new moodle_url('/course/category.php', array('id'=>$category->key));
                     $category->add(get_string('viewallcourses'), $url, self::TYPE_SETTING);
@@ -318,13 +310,6 @@ class slide_navigation extends global_navigation {
         } else if ($this->rootnodes['courses']->children->count() >= $limit) {
             $this->rootnodes['courses']->add(get_string('viewallcoursescategories'), new moodle_url('/course/index.php'), self::TYPE_SETTING);
         }
-
-
-
-
-
-
-
 
         // Load for the current user
         $this->load_for_user();
@@ -392,7 +377,9 @@ class slide_navigation extends global_navigation {
      */
     protected function load_all_categories($categoryid = null, $showbasecategories = false) {
         global $DB;
-        $coursenavview = get_config('slie_navigation', 'coursenavitems');
+
+        $coursenavview = get_config('slide_navigation', 'coursenavitems');
+
         // Check if this category has already been loaded
         if ($categoryid !== null && array_key_exists($categoryid, $this->addedcategories) && $this->addedcategories[$categoryid]->children->count() > 0) {
             return $this->addedcategories[$categoryid];
@@ -432,6 +419,8 @@ class slide_navigation extends global_navigation {
             $category = $DB->get_record('course_categories', array('id' => $categoryid), 'path', MUST_EXIST);
             $coursestoload = explode('/', trim($category->path, '/'));
             list($select, $params) = $DB->get_in_or_equal($coursestoload);
+
+
             $select = 'id '.$select.' OR parent '.$select;
             if ($showbasecategories) {
                 $select .= ' OR parent = 0';
@@ -439,26 +428,21 @@ class slide_navigation extends global_navigation {
             $params = array_merge($params, $params);
            $categories = $DB->get_records_select('course_categories', $select, $params, 'sortorder');
 
-if ($coursenavview =='catandcourses'){
-       //check whether user is enrolled on that course and whether the course is visible
+            if ($coursenavview =='catandcourses'){
+       //check whether user is enrolled on thhat course and whether it is visible
          global $USER;
             if (isloggedin() && !is_siteadmin($USER->id)){
 
                  foreach ($categories as $cat){
                    //  if ($cat->parent!=0){
                  //retrieve all courses for that category
-
-                  $params = array('category'=>$cat->id, 'visible'=>1);
                    $sql = "SELECT *
                           FROM {course} c
-                          WHERE category = :category
-                          AND visible = :visible";
+                          WHERE category = ?
+                          AND visible = ?";
 
-
-                   //$course = $DB->get_records_sql($sql, array($cat->id, 1));
-                 $course = $DB->get_records_sql($sql, $params);
-
-                     $courses = array();
+                   $course = $DB->get_records_sql($sql, array($cat->id, 1));
+                      $courses = array();
                      foreach ($course as $c){
                      $context = get_context_instance(CONTEXT_COURSE, $c->id);
                      $enrolled = is_enrolled($context, $USER->id);
@@ -479,18 +463,20 @@ if ($coursenavview =='catandcourses'){
                      $path = explode('/', trim($cat->path, '/'));
                      $last_element = end($path);
                      $length = sizeof($path);
-
+                    //if ($length!=1 && $cat->id == $last_element){
                     if ($cat->coursecount !=0 && $length!=1 && $cat->id == $last_element){
 
                          if (empty($courses)){
                          unset($categories[$cat->id]);
                         }
                     }
+
+                   //  }
                  }
             }
-         }
+            }
 
-       }
+        }
 
         // Now we have an array of categories we need to add them to the navigation.
         while (!empty($categories)) {
@@ -510,6 +496,7 @@ if ($coursenavview =='catandcourses'){
                 foreach ($path as $catid) {
                      if (!array_key_exists($catid, $this->addedcategories)) {
                         // This category isn't in the navigation yet so add it.
+
                         $subcategory = $categories[$catid];
                         if ($subcategory->parent == '0') {
                             // Yay we have a root category - this likely means we will now be able
@@ -532,33 +519,34 @@ if ($coursenavview =='catandcourses'){
             unset($categories[$category->id]);
         }
 
-
         // Check if there are any categories to load.
-       global $USER;
-      if (count($coursestoload) > 0) {
+        global $USER;
+        if (count($coursestoload) > 0) {
             //don't display all courses if the user is not an admin
-           if ($coursenavview =='catandcourses'){
-            if (!(isloggedin()) || (is_siteadmin($USER->id))){
+            if ($coursenavview =='catandcourses'){
+                if (!(isloggedin()) || (is_siteadmin($USER->id))){
+                    $this->load_all_courses($coursestoload);
+                }
+            }else{
                 $this->load_all_courses($coursestoload);
-             }
-           }else{
-               $this->load_all_courses($coursestoload);
-           }
+            }
 
         }
-      }
-  }
+    }
 
-  /**
-   * The global navigation tree block class
-   *
-   * Used to produce the global navigation block new to Moodle 2.0
-   *
-   * @package   block_navigation
-   * @category  navigation
-   * @copyright 2009 Sam Hemelryk
-   * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
-   */
+
+}
+
+/**
+ * The global navigation tree block class
+ *
+ * Used to produce the global navigation block new to Moodle 2.0
+ *
+ * @package   block_navigation
+ * @category  navigation
+ * @copyright 2009 Sam Hemelryk
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class block_slide_navigation extends block_base {
 
     /** @var int This allows for multiple navigation trees */
@@ -648,7 +636,7 @@ class block_slide_navigation extends block_base {
             'expansionlimit' => $expansionlimit
         );
         $this->page->requires->string_for_js('viewallcourses', 'moodle');
-       // $this->page->requires->yui_module(array('core_dock', 'moodle-block_navigation-navigation'), 'M.block_navigation.init_add_tree', array($arguments));
+        $this->page->requires->yui_module(array('core_dock', 'moodle-block_navigation-navigation'), 'M.block_navigation.init_add_tree', array($arguments));
     }
 
     /**
